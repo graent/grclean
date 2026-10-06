@@ -148,8 +148,48 @@ scripts/       Build/release helpers (sign check, icon gen, font scaling)
 - Official site: <https://gr.graent.cn/grclean>
 - Latest releases: the GitHub **Releases** page (installer `.exe` + portable `.exe`).
 
+## Donate
+
+If GrClean helped you out, you can **buy the author a cup of milk tea** 🧋. Donations are completely voluntary and never affect any feature.
+
+### Payment QR codes
+
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="screenshots/wx.jpg" width="220" alt="WeChat Pay QR code"/></td>
+    <td width="50%" align="center"><img src="screenshots/zfb.jpg" width="220" alt="Alipay QR code"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>微信收款码 · WeChat Pay</sub></td>
+    <td align="center"><sub>支付宝收款码 · Alipay</sub></td>
+  </tr>
+</table>
+
+### Community
+
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="screenshots/gzh.jpg" width="220" alt="Official WeChat account QR code"/></td>
+    <td width="50%" align="center"><img src="screenshots/qq.jpg" width="220" alt="QQ group QR code"/></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>微信公众号 · Official Account</sub></td>
+    <td align="center"><sub>QQ 交流群 · QQ Group</sub></td>
+  </tr>
+</table>
+
 ## License
 
-GrClean is open-source and free to use. Released under the MIT License — Copyright © Graent.
+GrClean is free to use for **non-commercial purposes**, including but not limited to **personal use, educational use, and security research**. Copyright © Graent. All rights reserved.
 
-> Add a `LICENSE` file at the repo root to make this explicit on GitHub.
+The following restrictions apply — by using or obtaining this software you agree to them:
+
+- 🚫 **No commercialization** — you may **not** use it for any commercial purpose, including but not limited to selling, reselling, bundling, or any other paid or commercial activity.
+- 🚫 **No redistribution (secondary distribution prohibited)** — you may **not** re-publish, mirror, or make it available through any other channel.
+- 🚫 **No removal or tampering** — you may **not** remove, obscure, or modify any copyright notice, author information, or integrity/verification information (including the embedded file-integrity checks) in the software or this repository.
+
+For commercial licensing or any form of cooperation, please contact the author directly.
+
+Suggestions and improvement ideas are always welcome — feel free to open an issue or reach out.
+
+> This project is distributed without a separate `LICENSE` file; the terms above constitute the license.
