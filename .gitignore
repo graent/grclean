@@ -1,0 +1,9 @@
+node_modules
+dist
+out
+.DS_Store
+Thumbs.db
+*.log*
+.vscode/
+# 签名测试时临时生成的检查脚本（非项目文件）
+__ps_check_*.ps1

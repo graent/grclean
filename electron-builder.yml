@@ -1,0 +1,73 @@
+appId: com.graent.grclean
+productName: GrClean
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+  # trash 在 Windows 上通过 import.meta.url 定位 windows-trash.exe 并交给 execFile 执行；
+  # 必须整包解包到 app.asar.unpacked，否则打包后 import.meta.url 落在 asar 内（URL 形式），
+  # execFile 收到带 host 的 URL 而非真实路径，会抛 TypeError: invalid host defined options
+  - '**/node_modules/trash/**'
+# ============================================================================
+# 代码签名（Windows Authenticode）
+#   electron-builder 只在拿到证书时才签名；未配置任何证书变量时自动跳过，
+#   不会让打包失败，所以下面的配置可以长期保留。
+#
+#   两种提供证书的方式（二选一，密钥一律不入库）：
+#   A. PFX 文件（推荐，CI/本机通用，走环境变量）
+#      CSC_LINK（或 WIN_CSC_LINK）= .pfx 文件路径 或 该文件的 base64 内容
+#      CSC_KEY_PASSWORD（或 WIN_CSC_KEY_PASSWORD）= pfx 密码
+#   B. 已导入 Windows 证书存储 / EV 硬件 token（在 win: 下配置，主题名不是密钥可入库）
+#      certificateSubjectName: <证书主题名>   或   certificateSha1: <证书指纹>
+#      （也可用 certificateFile + certificatePassword，或 env CSC_LINK 指向 pfx）
+#   ⚠️ CSC_NAME 只对 macOS 生效，Windows 不看它（源码确认：仅 macCodeSign.js 读取）。
+#
+#   ⚠️ 时间戳必须配 RFC3161（现配 digicert 公共时间戳服务）：
+#      没有时间戳时，证书过期后签名即失效；有 RFC3161 时间戳则永久有效。
+#   ⚠️ 签名会改变 exe（GrClean.exe / setup.exe / portable.exe）的字节，
+#      所以「先打包+签名，再算哈希，最后入库」，顺序不可颠倒。
+#      resources\app.asar 不参与签名，其哈希不受影响。
+# ============================================================================
+# 本工具面向 Windows（引擎依赖 PowerShell），只出 Windows 产物，且限定 x64
+win:
+  executableName: GrClean
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+  signingHashAlgorithms:
+    - sha256
+  rfc3161TimeStampServer: http://timestamp.digicert.com
+  timeStampServer: http://timestamp.digicert.com
+  # 方式 B（证书存储 / EV token）拿到证书后，取消下面注释并改成你的证书主题名或指纹：
+  # certificateSubjectName: Graent
+  # certificateSha1: 0000000000000000000000000000000000000000
+nsis:
+  # 非一键安装：让用户能选安装目录；仍走用户级安装（不需要管理员权限）
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  installerLanguages:
+    - zh_CN
+  language: '2052'
+  artifactName: ${productName}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+npmRebuild: false
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

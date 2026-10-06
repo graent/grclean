@@ -1,0 +1,680 @@
+/* ============================================================
+   主题变量系统（设计文档 §9.7 · 8 套配色）
+   选择器用 :root[data-theme="..."]（特异性高于 :root）逐个覆盖。
+   document.documentElement.dataset.theme 由 stores/settings.ts 设置。
+   颜色取值严格对齐 design.md §9.7「8 套配色精确取值」表。
+   变量清单：
+     --bg / --panel / --text / --title / --muted / --primary
+     --primary-weak / --border / --accent / --danger / --success
+     --shadow / --radius / --scroll-thumb / --scroll-thumb-hover
+     --sidebar-{bg,text,muted,hover,active-bg,active-text,brand,border}
+   ============================================================ */
+
+/* 兜底：未设置 data-theme 时等同默认主题 F 晴空蓝 */
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --text: #3b4754;
+  --title: #2b3440;
+  --muted: #8a94a6;
+  --primary: #2e93e0;
+  --primary-weak: #e8f3fb;
+  --border: #e7ebee;
+  --accent: #2e93e0;
+  --danger: #e0533e;
+  --success: #1fa971;
+  --shadow: 0 2px 10px rgba(43, 52, 64, 0.06);
+  --radius: 12px;
+  --scroll-thumb: rgba(138, 148, 166, 0.42);
+  --scroll-thumb-hover: rgba(138, 148, 166, 0.72);
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #2b3440;
+  --sidebar-muted: #8a94a6;
+  --sidebar-hover: #f0f4f7;
+  --sidebar-active-bg: #2e93e0;
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #2e93e0;
+  --sidebar-border: #eceff1;
+  /* 全局文字缩放系数（设置页「字体大小」切换，JS 写行内样式覆盖） */
+  --fs-scale: 1;
+}
+
+/* 字体大小四档兜底（JS 未接管时也生效） */
+:root[data-font="small"] {
+  --fs-scale: 0.9;
+}
+:root[data-font="normal"] {
+  --fs-scale: 1;
+}
+:root[data-font="medium"] {
+  --fs-scale: 1.15;
+}
+:root[data-font="large"] {
+  --fs-scale: 1.3;
+}
+
+/* A 薄荷青 Mint */
+:root[data-theme="mint"] {
+  --bg: #ffffff;
+  --panel: #f2faf9;
+  --text: #1f2a28;
+  --title: #0f5f5c;
+  --muted: #6b7d7a;
+  --primary: #0f5f5c;
+  --primary-weak: #e4f1f0;
+  --border: #dce4e2;
+  --accent: #2c8c86;
+  --danger: #d4453e;
+  --success: #1f9d8b;
+  --shadow: 0 2px 10px rgba(15, 95, 92, 0.06);
+  --scroll-thumb: rgba(15, 95, 92, 0.28);
+  --scroll-thumb-hover: rgba(15, 95, 92, 0.5);
+  --sidebar-bg: #0b4a47;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.6);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.2);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+}
+
+/* B 鼠尾草 Sage */
+:root[data-theme="sage"] {
+  --bg: #fbfaf7;
+  --panel: #f4f3ee;
+  --text: #232b27;
+  --title: #5b7b6f;
+  --muted: #7d8a82;
+  --primary: #5b7b6f;
+  --primary-weak: #ebf0ed;
+  --border: #e2e5df;
+  --accent: #c58a3d;
+  --danger: #c0492e;
+  --success: #4f9c7a;
+  --shadow: 0 2px 10px rgba(62, 90, 80, 0.06);
+  --scroll-thumb: rgba(91, 123, 111, 0.26);
+  --scroll-thumb-hover: rgba(91, 123, 111, 0.46);
+  --sidebar-bg: #3e5a50;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.6);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.18);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+}
+
+/* C 墨蓝 Ink */
+:root[data-theme="ink"] {
+  --bg: #ffffff;
+  --panel: #f4f7fb;
+  --text: #1b2733;
+  --title: #1f3a5f;
+  --muted: #6b7a8a;
+  --primary: #1f3a5f;
+  --primary-weak: #e8eef5;
+  --border: #dce3ec;
+  --accent: #3e6fb0;
+  --danger: #c0392b;
+  --success: #2e8b6b;
+  --shadow: 0 2px 10px rgba(31, 58, 95, 0.06);
+  --scroll-thumb: rgba(31, 58, 95, 0.26);
+  --scroll-thumb-hover: rgba(31, 58, 95, 0.46);
+  --sidebar-bg: #16293f;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.6);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.18);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+}
+
+/* D 琥珀暖灰 Amber */
+:root[data-theme="amber"] {
+  --bg: #faf7f2;
+  --panel: #f2ede5;
+  --text: #2a2723;
+  --title: #8a5a1e;
+  --muted: #8a7d6b;
+  --primary: #c8842b;
+  --primary-weak: #f5ecdf;
+  --border: #e7dfd2;
+  --accent: #c8842b;
+  --danger: #b23a2e;
+  --success: #6e8a3d;
+  --shadow: 0 2px 10px rgba(43, 43, 46, 0.06);
+  --scroll-thumb: rgba(138, 90, 30, 0.26);
+  --scroll-thumb-hover: rgba(138, 90, 30, 0.46);
+  --sidebar-bg: #2b2b2e;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.6);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.18);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+}
+
+/* E 暗夜青柠 Noir（深色） */
+:root[data-theme="noir"] {
+  --bg: #16181d;
+  --panel: #1e2128;
+  --text: #e6e8ec;
+  --title: #9dbf2e;
+  --muted: #98a0a8;
+  --primary: #9dbf2e;
+  --primary-weak: #23261a;
+  --border: #2a2e36;
+  --accent: #9dbf2e;
+  --danger: #e05b4f;
+  --success: #34d399;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  --scroll-thumb: rgba(230, 232, 235, 0.2);
+  --scroll-thumb-hover: rgba(230, 232, 235, 0.42);
+  --sidebar-bg: #101216;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.5);
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-active-bg: rgba(157, 191, 46, 0.22);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #9dbf2e;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+}
+
+/* F 晴空蓝 Sky（默认） */
+:root[data-theme="sky"] {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --text: #3b4754;
+  --title: #2b3440;
+  --muted: #8a94a6;
+  --primary: #2e93e0;
+  --primary-weak: #e8f3fb;
+  --border: #e7ebee;
+  --accent: #2e93e0;
+  --danger: #e0533e;
+  --success: #1fa971;
+  --shadow: 0 2px 10px rgba(43, 52, 64, 0.06);
+  --scroll-thumb: rgba(138, 148, 166, 0.42);
+  --scroll-thumb-hover: rgba(138, 148, 166, 0.72);
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #2b3440;
+  --sidebar-muted: #8a94a6;
+  --sidebar-hover: #f0f4f7;
+  --sidebar-active-bg: #2e93e0;
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #2e93e0;
+  --sidebar-border: #eceff1;
+}
+
+/* G 蜜桃粉 Peach */
+:root[data-theme="peach"] {
+  --bg: #fff6f5;
+  --panel: #fdecec;
+  --text: #2e2a2b;
+  --title: #d84f66;
+  --muted: #b0888c;
+  --primary: #f06d7e;
+  --primary-weak: #FDEBED;
+  --border: #f7d9dc;
+  --accent: #f06d7e;
+  --danger: #d6453c;
+  --success: #3da07a;
+  --shadow: 0 2px 10px rgba(216, 79, 102, 0.06);
+  --scroll-thumb: rgba(216, 79, 102, 0.26);
+  --scroll-thumb-hover: rgba(216, 79, 102, 0.46);
+  --sidebar-bg: #d84f66;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.65);
+  --sidebar-hover: rgba(255, 255, 255, 0.12);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.22);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.18);
+}
+
+/* H 葡萄紫 Grape */
+:root[data-theme="grape"] {
+  --bg: #faf8fe;
+  --panel: #f0ebfb;
+  --text: #25233a;
+  --title: #6a4fb8;
+  --muted: #8a83a3;
+  --primary: #8b6fd6;
+  --primary-weak: #eae3f8;
+  --border: #e2d8f4;
+  --accent: #8b6fd6;
+  --danger: #c84a6a;
+  --success: #3da07a;
+  --shadow: 0 2px 10px rgba(106, 79, 184, 0.06);
+  --scroll-thumb: rgba(106, 79, 184, 0.26);
+  --scroll-thumb-hover: rgba(106, 79, 184, 0.46);
+  --sidebar-bg: #6a4fb8;
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgba(255, 255, 255, 0.65);
+  --sidebar-hover: rgba(255, 255, 255, 0.12);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.2);
+  --sidebar-active-text: #ffffff;
+  --sidebar-brand: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.18);
+}
+
+/* ===== 自定义滚动条：默认隐藏，滚动时由 JS 加 .is-scrolling 显示 ===== */
+/* Firefox：默认完全透明，滚动中的元素才显示 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.is-scrolling {
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+/* WebKit / Chromium（Electron 渲染进程） */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 滑块默认透明；内缩圆角滑块（透明边框 + content-box 裁剪） */
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s;
+}
+
+/* 滚动中（App.vue 给滚动元素临时加 .is-scrolling）才显示 */
+.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb);
+  background-clip: content-box;
+}
+.is-scrolling::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scroll-thumb-hover);
+  background-clip: content-box;
+}
+.is-scrolling::-webkit-scrollbar-thumb:active {
+  background-color: var(--primary);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui,
+    sans-serif;
+  /* 基准正文字号 = 浏览器默认 1rem(16px)，乘缩放系数；
+     标准档 scale=1 即保持原尺寸，切换到小/中/大时整体缩放。
+     未显式声明 font-size 的元素靠这里继承。 */
+  font-size: calc(1rem * var(--fs-scale));
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  /* 放开页面文本选择，便于排查时复制错误提示等文字；
+     拖拽条 / 侧栏等需拖动的区域在各自选择器里单独重置为 none。 */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 仅输入框/文本域保留可选中，便于复制粘贴 */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 48px 32px 20px;
+}
+
+/* 概览页：可用高度更大且不显示右侧纵向滚动条（滚轮仍可滚动，防止极端字号溢出时被卡死） */
+.content.home-view {
+  padding-top: 44px;
+  scrollbar-width: none;
+}
+.content.home-view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* 扫描类视图布局：根容器填满内容区，主卡片弹性撑满、内部列表滚动 */
+.scan-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.fill-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fill-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 无边框窗口：顶部拖拽条（Electron 用 CSS region 拖拽） */
+.drag-strip {
+  position: fixed;
+  top: 0;
+  left: 196px;
+  right: 0;
+  height: 44px;
+  z-index: 100;
+  -webkit-app-region: drag;
+  /* 拖拽区域保持不可选，避免拖动时误选文字 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 9px 16px;
+  font-size: calc(14px * var(--fs-scale));
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  border-color: var(--primary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-warn {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #fff;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: calc(13px * var(--fs-scale));
+}
+
+h1 {
+  font-size: calc(22px * var(--fs-scale));
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: calc(16px * var(--fs-scale));
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin: 0 0 12px;
+}
+
+/* ============================================================
+   精修层：控件质感统一（按钮按压/焦点、输入框、下拉动效）
+   ============================================================ */
+
+/* 按钮按压反馈 + 键盘焦点环 */
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-weak);
+  border-color: var(--primary);
+}
+.btn-primary:focus-visible,
+.btn-danger:focus-visible,
+.btn-warn:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* 输入框 / 文本域：全局统一质感（高度、圆角、聚焦环） */
+input[type="text"],
+input[type="number"],
+input:not([type]),
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: calc(14px * var(--fs-scale));
+  line-height: 1.5;
+  padding: 7px 11px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type="text"]:focus,
+input[type="number"]:focus,
+input:not([type]):focus,
+textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  box-shadow: 0 0 0 3px var(--primary-weak);
+}
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+
+/* 列表行悬停统一用主色弱底，避免各视图自行发挥 */
+.muted {
+  line-height: 1.55;
+}
+
+/* ---- 加载动画与进度条（扫描/检测通用） ---- */
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spinner-rot 0.7s linear infinite;
+  vertical-align: -2px;
+  flex-shrink: 0;
+}
+@keyframes spinner-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* indeterminate 进度条：不确定总量时来回滑动 */
+.progress {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.progress .bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transition: width 0.2s;
+}
+.progress .bar.indeterminate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 35%;
+  border-radius: 2px;
+  background: var(--primary);
+  animation: progress-indet 1.1s ease-in-out infinite;
+}
+@keyframes progress-indet {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+/* 放在工具栏下方的进度条间距 */
+.toolbar-progress {
+  margin-top: 10px;
+}
+
+/* ---- 弹窗遮罩渐入渐出（各视图自定义 .mask 配合 <Transition name="fade">） ---- */
+.fade-enter-active {
+  animation: fade-in 0.16s ease-out;
+}
+.fade-leave-active {
+  animation: fade-out 0.12s ease-in;
+}
+.fade-enter-active .dialog {
+  animation: dialog-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fade-leave-active .dialog {
+  animation: fade-out 0.12s ease-in;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active,
+  .fade-enter-active .dialog,
+  .fade-leave-active .dialog {
+    animation: none;
+  }
+}
+
+/* ===== 页面切换 loading 遮罩（App.vue navigateTo）=====
+   盖住右侧内容区、避开 196px 侧栏（侧栏不参与切换，保持可见）。
+   半透明 + 背景模糊，白屏期间给出明确的「加载中」反馈。 */
+.view-loading {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 196px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: all;
+}
+.view-loading .spinner {
+  width: 26px;
+  height: 26px;
+  border-width: 3px;
+  color: var(--primary);
+}
+.view-loading-text {
+  font-size: calc(12px * var(--fs-scale));
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-loading .spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* ===== 打包后禁止选中 / 复制页面内容 =====
+   类由 main.ts 在**非开发模式**下加到 <html> 上：
+   开发期保持可选中，方便复制错误提示排查；打包后整页不可选，也就无法复制。
+   输入框 / 文本域 / contenteditable 保留可选，否则没法编辑自己填的内容。
+   !important 用于压过各组件 scoped 样式里显式的 user-select: text。 */
+html.no-copy,
+html.no-copy body,
+html.no-copy *:not(input):not(textarea):not([contenteditable='true']) {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+html.no-copy input,
+html.no-copy textarea,
+html.no-copy [contenteditable='true'] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+/* 不显示选区高亮（拖拽选择时不再有蓝色反馈） */
+html.no-copy ::selection {
+  background: transparent !important;
+}

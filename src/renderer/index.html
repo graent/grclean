@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 窗口标题：主进程 BrowserWindow 的 title 会在页面加载后被这里的 title 覆盖。
+         窗口卡顿「未响应」时 Windows DWM 画的 ghost 外框标题就取自窗口标题，
+         留 Electron 会露出「Electron」字样，必须写成产品名。 -->
+    <title>GrClean</title>
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <style>
+      /* ===== 启动页（splash）=====
+         Vue 挂载前的窗口内容：logo + 名称 + slogan。
+         全部内联，不依赖任何外部资源，窗口一显示就能画出来。
+         背景色与主窗口 backgroundColor 一致（#f4f6f8），避免闪色差。 */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #f4f6f8;
+        user-select: none;
+        transition: opacity 0.35s ease;
+      }
+      #splash.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #splash img {
+        width: 92px;
+        height: 92px;
+        border-radius: 22px;
+        box-shadow: 0 10px 28px rgba(124, 58, 237, 0.28);
+      }
+      #splash .name {
+        margin-top: 6px;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #3a3f47;
+        font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+      #splash .slogan {
+        font-size: 13px;
+        color: #8a919c;
+        letter-spacing: 1px;
+        font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+      #splash .bar {
+        margin-top: 18px;
+        width: 132px;
+        height: 3px;
+        border-radius: 2px;
+        overflow: hidden;
+        background: rgba(124, 58, 237, 0.15);
+      }
+      #splash .bar i {
+        display: block;
+        height: 100%;
+        width: 40%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #8b5cf6, #6d3ee0);
+        animation: splash-bar 1.1s ease-in-out infinite;
+      }
+      @keyframes splash-bar {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(340%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash {
+          transition: none;
+        }
+        #splash .bar i {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 启动页：Vue mount 后由 renderer/src/main.ts 淡出并移除 -->
+    <div id="splash">
+      <img
+        src="data:image/png;base64,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"
+        alt="GrClean"
+        draggable="false"
+      />
+      <div class="name">GrClean</div>
+      <div class="slogan">简单 · 易用 · 免费的 Windows 清理软件</div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
