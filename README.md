@@ -1,6 +1,6 @@
-<h1 align="center">electron-app</h1>
+<h1 align="center">GrClean</h1>
 
-<p align="center">An Electron application with Vue3 and TypeScript</p>
+<p align="center">An Electron application with Vue3 and TypeScript for Windows cleaning & optimization</p>
 
 <p align="center">
 <img src="https://img.shields.io/github/package-json/dependency-version/alex8088/electron-vite-boilerplate/dev/electron" alt="electron-version">
@@ -12,7 +12,7 @@
 </p>
 
 <p align='center'>
-<img src='./build/electron-vite-vue-ts.png'/>
+<img src='screenshots/overview-dark.png'/>
 </p>
 
 ## Features
@@ -116,14 +116,6 @@ npm run typecheck
 # Windows installer + portable (unsigned)
 npm run build:win
 
-# Windows installer + portable (signed — requires a code-signing certificate)
-npm run build:win:signed
-
-# macOS
-npm run build:mac
-
-# Linux
-npm run build:linux
 ```
 
 Build artifacts land in `dist/` (git-ignored).
