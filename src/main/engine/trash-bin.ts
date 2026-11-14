@@ -69,7 +69,14 @@ function exePath(): string {
 async function recycleViaExe(filePath: string): Promise<void> {
   const exe = exePath()
   await new Promise<void>((resolve, reject) => {
-    execFile(exe, [filePath], (err) => (err ? reject(err) : resolve()))
+    // timeout：dev 未签名 exe 常被杀软拦截/挂起，无 timeout 时会一直等到失败（可达数十秒）；
+    // 超时即视为不可用，转 PowerShell。windowsHide 避免意外弹黑窗。
+    execFile(
+      exe,
+      [filePath],
+      { timeout: 15000, windowsHide: true, killSignal: 'SIGKILL' },
+      (err) => (err ? reject(err) : resolve()),
+    )
   })
 }
 
@@ -140,7 +147,13 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 async function recycleManyViaExe(filePaths: string[]): Promise<void> {
   const exe = exePath()
   await new Promise<void>((resolve, reject) => {
-    execFile(exe, filePaths, (err) => (err ? reject(err) : resolve()))
+    // 批量路径同样加 timeout（与单条一致），避免 exe 挂起时整批长时间等待
+    execFile(
+      exe,
+      filePaths,
+      { timeout: 20000, windowsHide: true, killSignal: 'SIGKILL' },
+      (err) => (err ? reject(err) : resolve()),
+    )
   })
 }
 
@@ -226,11 +239,17 @@ export async function moveManyToRecycleBin(
     const batches = chunkArray(filePaths, RECYCLE_BATCH)
     const bad = await runBatches(batches, onBatch, succeeded)
     if (bad.length) {
-      // 只有失败的批需要降级（而非全量），失败面被限制在最小范围
-      exeFailCount += bad.length
-      if (exeFailCount >= EXE_FAIL_LIMIT) exeUnavailable = true
+      // 批量整批失败通常是 exe 不可用（被杀软拦截/挂起），直接判定不可用并整批走 PowerShell，
+      // 避免再走「降级逐条 moveToRecycleBin」——那会每条再试一次 exe（无 timeout 时逐条挂起，
+      // N 条累计可达分钟级，正是「极少文件却删除极慢」的根因，见 2026-11-14 修复）。
+      exeUnavailable = true
+      exeFailCount = EXE_FAIL_LIMIT
       console.warn(
-        '[trash-bin] ' + bad.length + '/' + batches.length + ' batch(es) failed, fallback per-item',
+        '[trash-bin] batch recycle failed (' +
+          bad.length +
+          '/' +
+          batches.length +
+          '), mark exe unavailable, fallback all to PowerShell',
       )
       for (const p of await fallbackPerItem(bad.flat(), onBatch, succeeded)) failed.push(p)
     }
@@ -264,7 +283,10 @@ async function fallbackPerItem(
       continue
     }
     try {
-      await moveToRecycleBin(p)
+      // exe 已判定不可用时直接走 PowerShell（不白等每条 exe 超时，避免 N 条累计分钟级）；
+      // 否则保留「单条 exe 优先」以救回批量偶发失败（如个别文件被占用）的其余文件
+      if (exeUnavailable) await recycleViaPowerShell(p)
+      else await moveToRecycleBin(p)
       succeeded?.push(p)
       onBatch?.([p])
     } catch (err) {
@@ -286,9 +308,14 @@ async function fallbackPerItem(
 export function warmTrashExe(): void {
   try {
     const exe = exePath()
-    execFile(exe, ['C:\\__grclean_warmup_dummy__.tmp'], () => {
-      /* 忽略：空跑必失败，仅用于预热 */
-    })
+    execFile(
+      exe,
+      ['C:\\__grclean_warmup_dummy__.tmp'],
+      { timeout: 15000, windowsHide: true, killSignal: 'SIGKILL' },
+      () => {
+        /* 忽略：空跑必失败，仅用于预热 */
+      },
+    )
   } catch {
     /* exe 缺失则跳过，不影响后续回收站逻辑 */
   }

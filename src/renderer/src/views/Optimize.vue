@@ -107,9 +107,10 @@ const diskOptions = computed(() => {
   return ordered.map((p) => {
     const isSys = (p.letters || []).includes(sysLetter);
     const letters = (p.letters || []).map((l) => `${l}:`).join(" ") || "无挂载卷";
+    const typePart = p.type && p.type !== "Unknown" ? p.type + "/" : "";
     return {
       value: String(p.deviceId),
-      label: `磁盘 ${p.deviceId} · ${p.model || "未知型号"}（${p.type}/${p.busType} · ${letters}${isSys ? " · 系统盘" : ""}）`,
+      label: `磁盘 ${p.deviceId}${p.model ? " · " + p.model : ""}（${typePart}${p.busType} · ${letters}${isSys ? " · 系统盘" : ""}）`,
     };
   });
 });

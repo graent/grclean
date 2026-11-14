@@ -7,6 +7,18 @@ import { Activity, BarChart3, Lightbulb } from '@lucide/vue'
 
 const r = computed(() => health.report)
 
+// 系统盘摘要：磁盘类型 / 健康状态为空或 Unknown / 未知 时直接不显示该段（连同分隔符）。
+const diskSummary = computed(() => {
+  const s = r.value?.stats
+  if (!s) return ''
+  const segs: string[] = []
+  segs.push(`系统盘 ${s.systemTotalGB.toFixed(0)} GB`)
+  segs.push(`剩余 ${s.systemFreeGB.toFixed(1)} GB`)
+  if (s.diskType && s.diskType !== 'Unknown') segs.push(s.diskType)
+  if (s.diskHealthy && s.diskHealthy !== '未知') segs.push(s.diskHealthy)
+  return segs.join(' · ')
+})
+
 function ratioColor(f: FactorResult): string {
   const ratio = f.max > 0 ? f.score / f.max : 1
   if (ratio >= 0.85) return '#3a9d3a'
@@ -39,11 +51,7 @@ function ratioColor(f: FactorResult): string {
           <div class="bar indeterminate"></div>
         </div>
       </div>
-      <p v-if="r" class="scanned muted">
-        系统盘 {{ r.stats.systemTotalGB.toFixed(0) }} GB ·
-        剩余 {{ r.stats.systemFreeGB.toFixed(1) }} GB ·
-        {{ r.stats.diskType }} · {{ r.stats.diskHealthy }}
-      </p>
+      <p v-if="r" class="scanned muted">{{ diskSummary }}</p>
       <button v-if="r" class="btn btn-primary recheck" :disabled="health.loading" @click="runHealth()">
         <span v-if="health.loading" class="spinner"></span>
         {{ health.loading ? '体检中…' : '重新体检' }}

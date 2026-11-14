@@ -125,11 +125,9 @@ function doSetProtection(enable: boolean) {
             <div class="ov-label">还原点占用</div>
             <div class="ov-value">{{ formatSize(usedBytes) }}</div>
           </div>
-          <div class="ov-item">
+          <div class="ov-item" v-if="maxBytes">
             <div class="ov-label">配额上限</div>
-            <div class="ov-value">
-              {{ maxBytes ? formatSize(maxBytes) : "未知" }}
-            </div>
+            <div class="ov-value">{{ formatSize(maxBytes) }}</div>
           </div>
           <div class="ov-item">
             <div class="ov-label">系统盘</div>

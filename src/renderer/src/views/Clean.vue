@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import {
   scanJunk,
   cancelScan,
@@ -30,12 +30,36 @@ const cleanedCount = ref(0)
 const showConfirm = ref(false)
 /** 清理完成对话框（询问重新扫描 / 暂不） */
 const showDone = ref(false)
+/** 清理进行中遮罩（带 loading，不可手动关闭，避免误操作） */
+const showCleaningModal = ref(false)
 const doneResult = ref<CleanResult | null>(null)
 
 // ---- 增强清理项（可勾选、可展开收起） ----
 const extraItems = ref<ExtraJunkItem[]>([])
 const extraSelected = ref<Set<string>>(new Set())
 const showExtra = ref(false)
+
+// 增强清理项勾选持久化：关闭后再打开记住用户上次的选择
+const EXTRA_SEL_KEY = 'grclean.extra.selected'
+function loadExtraSelected(): string[] | null {
+  try {
+    const raw = localStorage.getItem(EXTRA_SEL_KEY)
+    if (raw == null) return null
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : null
+  } catch {
+    return null
+  }
+}
+function persistExtraSelected(ids: string[]) {
+  try {
+    localStorage.setItem(EXTRA_SEL_KEY, JSON.stringify(ids))
+  } catch {
+    /* 隐私模式等场景下写入失败，忽略即可 */
+  }
+}
+// 任一勾选变化（含全选/取消、初次默认）都自动落盘
+watch(extraSelected, (s) => persistExtraSelected(Array.from(s)))
 
 const safeItems = computed(() => extraItems.value.filter((i) => i.level === 'safe'))
 const cautionItems = computed(() =>
@@ -329,19 +353,25 @@ function flushCleanProgress() {
   const idSet = pendingIds
   pendingIds = new Set<string>()
   const cats = result.value?.categories
+  // Map 加速分类查找：避免每命中项对分类数组做 O(cats) 的 find
+  const catMap = cats ? new Map(cats.map((c) => [c.category, c])) : null
   let n = 0
+  // 单次遍历完成「计数递减 + 过滤」，避免先遍历再 filter 两次 O(n)
+  const next: CleanCandidate[] = []
   for (const c of candidates.value) {
     if (idSet.has(c.id)) {
       n++
-      const cat = cats?.find((x) => x.category === c.category)
+      const cat = catMap?.get(c.category)
       if (cat) {
         cat.count = Math.max(0, cat.count - 1)
         cat.size = Math.max(0, cat.size - c.size)
       }
+    } else {
+      next.push(c)
     }
   }
   if (n > 0) {
-    candidates.value = candidates.value.filter((c) => !idSet.has(c.id))
+    candidates.value = next
     const s = new Set(selected.value)
     for (const id of idSet) s.delete(id)
     selected.value = s
@@ -358,6 +388,7 @@ function onCleanProgress(ev: { type: 'items'; ids: string[] }) {
 async function confirmClean() {
   showConfirm.value = false
   cleaning.value = true
+  showCleaningModal.value = true
   error.value = ''
   cleanedCount.value = 0
   try {
@@ -373,9 +404,11 @@ async function confirmClean() {
     // 已删项已从列表移除；这里清空剩余勾选并弹完成对话框
     selected.value = new Set()
     doneResult.value = r
+    showCleaningModal.value = false
     showDone.value = true
   } catch (e: any) {
     error.value = String(e)
+    showCleaningModal.value = false
   } finally {
     cleaning.value = false
   }
@@ -390,10 +423,17 @@ function doneRescan() {
 onMounted(async () => {
   try {
     extraItems.value = await listExtraJunk()
-    // 默认勾选「建议清理」项；需确认 / 不可逆项一律不默认勾选
-    extraSelected.value = new Set(
-      extraItems.value.filter((i) => i.recommend).map((i) => i.id),
-    )
+    const valid = new Set(extraItems.value.map((i) => i.id))
+    const saved = loadExtraSelected()
+    if (saved) {
+      // 有保存记录：恢复用户上次勾选（去掉已失效的 id）
+      extraSelected.value = new Set(saved.filter((id) => valid.has(id)))
+    } else {
+      // 首次（无记录）：默认勾选「建议清理」项；需确认 / 不可逆项不默认勾选
+      extraSelected.value = new Set(
+        extraItems.value.filter((i) => i.recommend).map((i) => i.id),
+      )
+    }
   } catch {
     extraItems.value = []
   }
@@ -492,30 +532,60 @@ onMounted(async () => {
             <span class="group-name">{{ grp.category }}</span>
             <span class="muted">{{ grp.count }} 项 · {{ formatSize(grp.size) }}</span>
           </div>
-          <!-- v-memo：勾选/清理时仅重渲染受影响的行，避免上千行整表 diff -->
-          <div
-            v-for="item in grp.items"
-            :key="item.id"
-            v-memo="[item, selected.has(item.id), cleaning]"
-            class="row"
+          <!-- 删除阶段：transition-group 播放逐项淡出（替代硬移除导致的跳动/闪），关闭 v-memo 避免 memo 与离场动画冲突 -->
+          <transition-group
+            v-if="cleaning"
+            name="delrow"
+            tag="div"
+            class="grp-rows"
           >
-            <label class="chk">
-              <input
-                type="checkbox"
-                :checked="selected.has(item.id)"
-                @change="toggle(item.id)"
-              />
-            </label>
-            <span class="path" :title="item.path">{{ item.path }}</span>
-            <span class="size muted">{{ formatSize(item.size) }}</span>
-            <button
-              class="row-del"
-              :disabled="cleaning"
-              title="删除该项"
-              @click="deleteOne(item.id)"
+            <div v-for="item in grp.items" :key="item.id" class="row">
+              <label class="chk">
+                <input
+                  type="checkbox"
+                  :checked="selected.has(item.id)"
+                  @change="toggle(item.id)"
+                />
+              </label>
+              <span class="path" :title="item.path">{{ item.path }}</span>
+              <span class="size muted">{{ formatSize(item.size) }}</span>
+              <button
+                class="row-del"
+                :disabled="cleaning"
+                title="删除该项"
+                @click="deleteOne(item.id)"
+              >
+                <Trash2 :size="15" />
+              </button>
+            </div>
+          </transition-group>
+          <!-- 扫描/浏览阶段：普通 v-for + v-memo，增量追加丝滑、且不经 transition 机制，
+               避免 transition-group 与 v-memo 冲突导致的“空白一下再整体出现” -->
+          <div v-else class="grp-rows">
+            <div
+              v-for="item in grp.items"
+              :key="item.id"
+              v-memo="[item, selected.has(item.id)]"
+              class="row"
             >
-              <Trash2 :size="15" />
-            </button>
+              <label class="chk">
+                <input
+                  type="checkbox"
+                  :checked="selected.has(item.id)"
+                  @change="toggle(item.id)"
+                />
+              </label>
+              <span class="path" :title="item.path">{{ item.path }}</span>
+              <span class="size muted">{{ formatSize(item.size) }}</span>
+              <button
+                class="row-del"
+                :disabled="cleaning"
+                title="删除该项"
+                @click="deleteOne(item.id)"
+              >
+                <Trash2 :size="15" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -637,6 +707,22 @@ onMounted(async () => {
       <template #footer>
         <button class="btn btn-primary" @click="showExtra = false">完成</button>
       </template>
+    </Modal>
+
+    <!-- 清理进行中遮罩：带 loading，不可手动关闭（hide-close + close-on-mask=false），
+         清理完成或出错后由脚本关闭并切换为「清理完成」或错误提示 -->
+    <Modal
+      :open="showCleaningModal"
+      title="正在清理"
+      width="340px"
+      hide-close
+      :close-on-mask="false"
+    >
+      <div class="cleaning-modal">
+        <span class="spinner cleaning-spinner"></span>
+        <p class="cleaning-text">正在清理垃圾文件，请稍候…</p>
+        <p class="muted small">已删除 {{ cleanedCount }} 条</p>
+      </div>
     </Modal>
 
     <!-- 清理完成对话框：重新扫描 / 暂不 -->
@@ -980,6 +1066,25 @@ onMounted(async () => {
   color: var(--success);
   font-size: calc(13px * var(--fs-scale));
 }
+/* 清理进行中遮罩内容：居中、带放大 spinner */
+.cleaning-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px 4px;
+  text-align: center;
+}
+.cleaning-spinner {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+.cleaning-text {
+  margin: 0;
+  font-size: calc(13.5px * var(--fs-scale));
+  color: var(--text);
+}
 .mask {
   position: fixed;
   inset: 0;
@@ -998,5 +1103,28 @@ onMounted(async () => {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 14px;
+}
+
+/* 清理时逐项淡出 + 后续行平滑上移：替代原「硬移除行」导致的列表跳动/闪。
+   .row 带 content-visibility:auto，离场元素须强制 visible，否则离屏塌缩会破坏动画 */
+.grp-rows {
+  position: relative;
+}
+.delrow-move,
+.delrow-enter-active,
+.delrow-leave-active {
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+.delrow-enter-from,
+.delrow-leave-to {
+  opacity: 0;
+  transform: translateX(-14px);
+}
+.delrow-leave-active {
+  position: absolute;
+  left: 0;
+  right: 0;
+  content-visibility: visible !important;
+  z-index: 2;
 }
 </style>

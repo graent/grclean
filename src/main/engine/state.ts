@@ -1,5 +1,6 @@
 import { type CleanCandidate, type RegistryEntry } from './model'
 import type { SocialItem } from './social'
+import type { AiCacheItem } from './ai_cache'
 import type { InstallerItem } from './installer'
 import type { LogItem } from './logs'
 import type { ContextMenuItem, ShellIconItem } from './contextmenu'
@@ -32,6 +33,11 @@ export interface SocialSession {
   items: Map<string, SocialItem>
 }
 
+/** AI 软件缓存会话：以 id 为键保存条目，清理时反查真实目录（防路径注入）。 */
+export interface AiCacheSession {
+  items: Map<string, AiCacheItem>
+}
+
 /** 安装包 / 日志 / 右键菜单 / 驱动：均为「id → 条目」的会话，清理时反查真实路径。 */
 export interface ItemSession<T> {
   items: Map<string, T>
@@ -42,6 +48,7 @@ export class AppState {
   dupSession: ScanSession | null = null
   regSession: RegistrySession | null = null
   socialSession: SocialSession | null = null
+  aiCacheSession: AiCacheSession | null = null
   installerSession: ItemSession<InstallerItem> | null = null
   logSession: ItemSession<LogItem> | null = null
   ctxSession: ItemSession<ContextMenuItem> | null = null
@@ -76,6 +83,12 @@ export class AppState {
     const map = new Map<string, SocialItem>()
     for (const it of items) map.set(it.id, it)
     this.socialSession = { items: map }
+  }
+
+  setAiCacheSession(items: AiCacheItem[]): void {
+    const map = new Map<string, AiCacheItem>()
+    for (const it of items) map.set(it.id, it)
+    this.aiCacheSession = { items: map }
   }
 
   /** 通用条目会话工厂（安装包 / 日志 / 右键菜单 / 驱动共用同一套反查机制）。 */

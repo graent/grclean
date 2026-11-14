@@ -75,7 +75,8 @@ function onMask() {
 
 function onKey(e: KeyboardEvent) {
   // 只处理最上层：嵌套弹窗时一次 ESC 关一层，不会连带关掉外层
-  if (e.key === 'Escape' && props.open && isTopmost()) {
+  // hideClose（必须做出选择/强制展示，如清理中遮罩）：ESC 也不关闭
+  if (e.key === 'Escape' && props.open && isTopmost() && !props.hideClose) {
     e.stopPropagation()
     close()
   }

@@ -189,6 +189,23 @@ export interface SocialItem {
   recommend: boolean;
 }
 
+/** AI 软件缓存风险等级：safe=安全（缓存/日志/更新） | caution=谨慎（模型/索引/工作区）。 */
+export type AiLevel = "safe" | "caution";
+
+/** AI 软件缓存条目（一款 AI 应用的一类缓存目录）。 */
+export interface AiCacheItem {
+  id: string;
+  app: string;
+  level: AiLevel;
+  name: string;
+  path: string;
+  size: number;
+  fileCount: number;
+  /** AI 专清无锁定级，恒为 false（保留字段以复用通用逻辑） */
+  locked: boolean;
+  recommend: boolean;
+}
+
 /** 风险等级元信息（分组标题 / 说明 / 配色 / 是否默认勾选）。 */
 export interface LevelMeta {
   order: number;
@@ -709,6 +726,16 @@ declare global {
         purge: boolean,
         onProgress?: (ev: { type: 'items'; ids: string[] }) => void,
       ): Promise<CleanResult>;
+      scanAiCache(
+        onItem: (item: AiCacheItem) => void,
+        onProgress?: (scanned: number) => void,
+      ): Promise<AiCacheItem[]>;
+      cancelScanAiCache(): void;
+      deleteAiCache(
+        ids: string[],
+        purge: boolean,
+        onProgress?: (ev: { type: 'items'; ids: string[] }) => void,
+      ): Promise<CleanResult>;
       listDisks(): Promise<DiskInfo[]>;
       listPhysicalDisks(): Promise<PhysicalDiskInfo[]>;
       smartOverview(deviceId: number): Promise<SmartRow[]>;
@@ -1178,6 +1205,28 @@ export function deleteSocial(
   return window.api.deleteSocial(ipcIds(ids), purge, onProgress);
 }
 
+/** AI 软件缓存流式扫描（按应用分批回调）。 */
+export function scanAiCache(
+  onItem: (item: AiCacheItem) => void,
+  onProgress?: (scanned: number) => void,
+): Promise<AiCacheItem[]> {
+  return window.api.scanAiCache(onItem, onProgress);
+}
+
+/** 取消 AI 软件缓存扫描。 */
+export function cancelScanAiCache(): void {
+  window.api.cancelScanAiCache();
+}
+
+/** 清理 AI 软件缓存选中项（purge=true 永久删除，默认移入回收站）。 */
+export function deleteAiCache(
+  ids: string[],
+  purge: boolean,
+  onProgress?: (ev: { type: 'items'; ids: string[] }) => void,
+): Promise<CleanResult> {
+  return window.api.deleteAiCache(ipcIds(ids), purge, onProgress);
+}
+
 /** 大文件 / 单文件：删除（默认移入回收站）。 */
 export function deleteOne(
   path: string,
@@ -1557,6 +1606,9 @@ export function assertApiKeys(): void {
     "scanSocial",
     "cancelScanSocial",
     "deleteSocial",
+    "scanAiCache",
+    "cancelScanAiCache",
+    "deleteAiCache",
     "deleteOne",
     "listDisks",
     "listPhysicalDisks",

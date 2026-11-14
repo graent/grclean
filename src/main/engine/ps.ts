@@ -1,8 +1,49 @@
 import { execFile, spawn } from 'child_process'
+import { existsSync } from 'fs'
 import { promisify } from 'util'
 import { StringDecoder } from 'string_decoder'
 
 const execFileAsync = promisify(execFile)
+
+/**
+ * 解析 PowerShell 可执行文件的绝对路径。
+ * 裸写 'powershell' 依赖 PATH+PATHEXT 解析；在部分用户机器上（PATH 被清理/截断、
+ * 32/64 位重定向、杀软改动环境）会令 CreateProcess 失败并抛 'spawn UNKNOWN'。
+ * 这里直接给出绝对路径，规避命令名解析失败这一支。
+ *
+ * 候选顺序：
+ *  1) System32 —— 普通情况（32 位进程访问时被重定向到 SysWOW64，那里同样有 powershell.exe）
+ *  2) Sysnative —— 32 位进程访问原生 64 位系统目录（极端环境兜底）
+ *  3) SysWOW64 —— 再兜底
+ * 全部缺失才回退裸名 'powershell'（保持原有行为，便于后续定位而非彻底失灵）。
+ */
+let _psPath: string | null = null
+function getPsPath(): { path: string; resolved: boolean } {
+  if (_psPath !== null) {
+    return { path: _psPath, resolved: _psPath !== 'powershell' }
+  }
+  const windir = process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows'
+  const candidates = [
+    `${windir}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`,
+    `${windir}\\Sysnative\\WindowsPowerShell\\v1.0\\powershell.exe`,
+    `${windir}\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe`,
+  ]
+  for (const c of candidates) {
+    try {
+      if (existsSync(c)) {
+        _psPath = c
+        return { path: c, resolved: true }
+      }
+    } catch {
+      /* 忽略，继续下一个候选 */
+    }
+  }
+  _psPath = 'powershell'
+  return { path: _psPath, resolved: false }
+}
+
+/** 确定的工作目录，避免「继承的 cwd 不存在 → CreateProcess 失败 → spawn UNKNOWN」。 */
+const SAFE_CWD = process.env.SystemRoot || 'C:\\Windows'
 
 /** 强制 PowerShell 以 UTF-8 输出，避免中文 Windows 下乱码（控制台默认 GBK）。 */
 const PS_UTF8 =
@@ -13,9 +54,10 @@ const PS_UTF8 =
  * 用 execFile（非 Sync）避免阻塞主进程事件循环，保障扫描期间 UI 不卡顿。
  */
 export async function runPs(script: string): Promise<string> {
+  const { path: psPath, resolved } = getPsPath()
   try {
     const { stdout } = await execFileAsync(
-      'powershell',
+      psPath,
       [
         '-NoProfile',
         '-NonInteractive',
@@ -29,6 +71,7 @@ export async function runPs(script: string): Promise<string> {
         windowsHide: true,
         maxBuffer: 32 * 1024 * 1024,
         timeout: 120000,
+        cwd: SAFE_CWD,
       },
     )
     // 去 BOM 后按 UTF-8 解码
@@ -57,7 +100,10 @@ export async function runPs(script: string): Promise<string> {
         .join('  ')
       throw new Error(tail)
     }
-    throw e
+    // 进程未能启动（CreateProcess 失败，典型为 'spawn UNKNOWN'）：
+    // 补充 powershell 路径与 errno，便于区分「路径解析失败」还是「被杀软拦截」。
+    const code = (err as NodeJS.ErrnoException).code || 'UNKNOWN'
+    throw new Error(`[runPs] ${err.message} (path=${psPath}, resolved=${resolved}, errno=${code})`)
   }
 }
 
@@ -75,8 +121,9 @@ export function runPsStream(
   onLine: (line: string) => void | boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    const { path: psPath, resolved } = getPsPath()
     const child = spawn(
-      'powershell',
+      psPath,
       [
         '-NoProfile',
         '-NonInteractive',
@@ -85,7 +132,7 @@ export function runPsStream(
         '-Command',
         PS_UTF8 + script,
       ],
-      { windowsHide: true },
+      { windowsHide: true, cwd: SAFE_CWD },
     )
     const decoder = new StringDecoder('utf8')
     let buf = ''
@@ -116,7 +163,10 @@ export function runPsStream(
         }
       }
     })
-    child.on('error', (e) => finish(e))
+    child.on('error', (e) => {
+      const code = (e as NodeJS.ErrnoException).code || 'UNKNOWN'
+      finish(new Error(`[runPsStream] ${e.message} (path=${psPath}, resolved=${resolved}, errno=${code})`))
+    })
     child.on('close', () => finish())
   })
 }

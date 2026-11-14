@@ -76,6 +76,7 @@ $letter = '${L}'
 $vol = Get-Volume -DriveLetter $letter -ErrorAction SilentlyContinue
 $part = ($vol | Get-Partition -ErrorAction SilentlyContinue | Select-Object -First 1)
 $disk = ($part | Get-Disk -ErrorAction SilentlyContinue)
+$pd = if ($disk) { $disk | Get-PhysicalDisk -ErrorAction SilentlyContinue }
 $data = [ordered]@{
   letter = $letter
   name = if ($vol) { $vol.FileSystemLabel } else { '' }
@@ -83,6 +84,8 @@ $data = [ordered]@{
   totalBytes = if ($vol) { [int64]$vol.Size } else { 0 }
   freeBytes = if ($vol) { [int64]$vol.SizeRemaining } else { 0 }
   type = if ($disk) { $disk.MediaType } else { 'Unknown' }
+  pdType = if ($pd) { $pd.MediaType } else { '' }
+  busType = if ($pd) { $pd.BusType } else { '' }
   model = if ($disk) { $disk.Model } else { '' }
   trimEnabled = $null
   aligned = $null
@@ -99,13 +102,20 @@ ConvertTo-Json -Compress $data
   const d = arr[0]
   if (!d) return null
   const typeMap: Record<string, DiskType> = { SSD: 'SSD', HDD: 'HDD' }
+  // Get-Disk.MediaType 在大量 SSD/NVMe 上返回 'Unspecified'（Windows 普遍现象），
+  // 需先回退到更可靠的 Get-PhysicalDisk.MediaType；仍失败再用总线类型 / Trim 强信号兜底。
+  let type: DiskType = 'Unknown'
+  const mapped = typeMap[d.type] || typeMap[d.pdType]
+  if (mapped) type = mapped
+  else if (d.busType === 'NVMe' || d.busType === 'SCSI') type = 'SSD'
+  else if (d.trimEnabled === true) type = 'SSD'
   const base: Omit<DiskInfo, 'healthy'> = {
     letter: d.letter,
     name: d.name || '',
     fileSystem: d.fileSystem || '',
     totalBytes: Number(d.totalBytes) || 0,
     freeBytes: Number(d.freeBytes) || 0,
-    type: typeMap[d.type] || 'Unknown',
+    type,
     model: d.model || '',
     trimEnabled: d.trimEnabled === null ? null : !!d.trimEnabled,
     aligned: d.aligned === null ? null : !!d.aligned,

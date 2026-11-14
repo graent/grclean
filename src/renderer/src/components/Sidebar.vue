@@ -12,6 +12,7 @@ import {
   FileSearch,
   Activity,
   MessageCircle,
+  Bot,
   HardDrive,
   PackageOpen,
   FileText,
@@ -44,6 +45,7 @@ const items = [
   { key: 'score', icon: Activity },
   { key: 'clean', icon: Trash2 },
   { key: 'social', icon: MessageCircle },
+  { key: 'aicache', icon: Bot },
   { key: 'disk', icon: HardDrive },
   { key: 'big', icon: Package },
   { key: 'startup', icon: Rocket },
@@ -78,6 +80,7 @@ const items = [
         @click="emit('navigate', it.key)"
       >
         <span class="ico"><component :is="it.icon" :size="18" /></span>{{ t('nav.' + it.key) }}
+        <span v-if="it.key === 'aicache'" class="nav-new">NEW</span>
       </button>
     </nav>
   </aside>
@@ -148,6 +151,8 @@ nav {
   cursor: pointer;
   transition: all 0.15s;
   -webkit-app-region: no-drag;
+  /* 角标绝对定位的参照系 */
+  position: relative;
 }
 
 .nav-item:hover {
@@ -166,5 +171,71 @@ nav {
   justify-content: center;
   width: 22px;
   flex-shrink: 0;
+}
+
+/* 新功能角标：绝对定位浮在菜单项右上角，**不参与 flex 布局**。
+   ⚠️ 不能用 margin-left:auto 做成 flex 子项——会占掉文字宽度，导致「AI 软件专清」换行。
+   top 取负值骑在按钮上边缘：既不占空间，也不会压到垂直居中的菜单文字。
+   固定英文 NEW（营销式标签，不走多语言包）。
+   动画：入场弹性弹出一次，之后每 3.2s 一次「脉冲 + 扫光」，其余时间静止
+   （避免持续抖动干扰阅读）。光晕取 var(--danger) 跟随主题，动画只改
+   transform / filter / background-position，不触发重排、不影响布局。 */
+.nav-new {
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  z-index: 1;
+  font-size: calc(9px * var(--fs-scale));
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: #fff;
+  background-color: var(--danger);
+  /* 斜向高光带：用 background-position 扫过，无需伪元素 */
+  background-image: linear-gradient(
+    100deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 62%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position: 130% 0;
+  border-radius: 4px;
+  padding: 2px 4px;
+  pointer-events: none;
+  transform-origin: center;
+  animation:
+    new-badge-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards,
+    new-badge-pop 3.2s ease-in-out 0.5s infinite,
+    new-badge-shine 3.2s linear 0.5s infinite;
+}
+
+/* 入场：从小弹到略大再回落，只播一次 */
+@keyframes new-badge-in {
+  from { opacity: 0; transform: scale(0.3); }
+  70%  { opacity: 1; transform: scale(1.18); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* 每轮只在前 20% 时间「叮」一下：短促放大 + 同色光晕，之后完全静止 */
+@keyframes new-badge-pop {
+  0%, 62%, 100% { transform: scale(1); filter: none; }
+  70%           { transform: scale(1.14); filter: drop-shadow(0 0 4px var(--danger)); }
+  82%           { transform: scale(1); filter: none; }
+}
+
+/* 高光带与脉冲同步，从左侧划到右侧后停在界外 */
+@keyframes new-badge-shine {
+  0%, 60%   { background-position: 130% 0; }
+  82%, 100% { background-position: -30% 0; }
+}
+
+/* 系统开启「减少动态效果」时退化为静态角标 */
+@media (prefers-reduced-motion: reduce) {
+  .nav-new {
+    animation: none;
+    background-image: none;
+  }
 }
 </style>

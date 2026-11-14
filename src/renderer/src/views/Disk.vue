@@ -203,8 +203,8 @@ function rowColor(ok: boolean | null): string {
           @click="activeId = p.deviceId"
         >
           <span class="pd-idx">磁盘 {{ p.deviceId }}</span>
-          <span class="pd-model">{{ p.model || "未知型号" }}</span>
-          <span class="pd-meta">{{ p.type }} · {{ p.busType }}</span>
+          <span class="pd-model" v-if="p.model">{{ p.model }}</span>
+          <span class="pd-meta"><template v-if="p.type && p.type !== 'Unknown'">{{ p.type }} · </template>{{ p.busType }}</span>
           <span
             class="healthy-tag"
             :style="{
@@ -226,9 +226,7 @@ function rowColor(ok: boolean | null): string {
             <div>
               <div class="pd-detail-title">{{ activePhysical.model }}</div>
               <div class="muted small">
-                {{ activePhysical.type }} · {{ activePhysical.busType }} ·
-                序列号 {{ activePhysical.serial || "未知" }} · 固件
-                {{ activePhysical.firmware || "未知" }}
+                <template v-if="activePhysical.type && activePhysical.type !== 'Unknown'">{{ activePhysical.type }} · </template>{{ activePhysical.busType }}<template v-if="activePhysical.serial"> · 序列号 {{ activePhysical.serial }}</template><template v-if="activePhysical.firmware"> · 固件 {{ activePhysical.firmware }}</template>
               </div>
             </div>
             <span class="spacer" />
@@ -260,12 +258,10 @@ function rowColor(ok: boolean | null): string {
           >
             <div class="disk-head">
               <span class="disk-letter">{{ d.letter }}:{{ d.name }}</span>
-              <span class="muted small" v-if="!d.name">{{ d.model || "未知型号" }}</span>
+              <span class="muted small" v-if="!d.name && d.model">{{ d.model }}</span>
             </div>
             <div class="muted small disk-sub">
-              {{ formatSize(d.totalBytes) }} ·
-              {{ d.fileSystem || "未知文件系统" }} ·
-              {{ d.aligned === null ? "对齐未知" : d.aligned ? "已对齐" : "未对齐" }}
+              {{ formatSize(d.totalBytes) }}<template v-if="d.fileSystem || d.aligned !== null"> · </template><template v-if="d.fileSystem">{{ d.fileSystem }}</template><template v-if="d.fileSystem && d.aligned !== null"> · </template><template v-if="d.aligned !== null">{{ d.aligned ? "已对齐" : "未对齐" }}</template>
             </div>
             <div class="bar">
               <div
@@ -347,11 +343,10 @@ function rowColor(ok: boolean | null): string {
           <div v-for="d in sortedDisks" :key="d.letter" class="disk-card">
             <div class="disk-head">
               <span class="disk-letter">{{ d.letter }}:{{ d.name }}</span>
-              <span class="muted small" v-if="!d.name">{{ d.model || "未知型号" }}</span>
+              <span class="muted small" v-if="!d.name && d.model">{{ d.model }}</span>
             </div>
             <div class="muted small disk-sub">
-              {{ d.type }} · {{ d.fileSystem || "未知文件系统" }} ·
-              {{ d.aligned === null ? "对齐未知" : d.aligned ? "已对齐" : "未对齐" }}
+              <template v-if="d.type && d.type !== 'Unknown'">{{ d.type }}<template v-if="d.fileSystem || d.aligned !== null"> · </template></template><template v-if="d.fileSystem">{{ d.fileSystem }}</template><template v-if="d.fileSystem && d.aligned !== null"> · </template><template v-if="d.aligned !== null">{{ d.aligned ? "已对齐" : "未对齐" }}</template>
             </div>
             <div class="bar">
               <div

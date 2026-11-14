@@ -155,6 +155,19 @@ interface SocialItem {
   recommend: boolean
 }
 
+/** AI 软件缓存条目（两级风险：safe / caution）。 */
+interface AiCacheItem {
+  id: string
+  app: string
+  level: string
+  name: string
+  path: string
+  size: number
+  fileCount: number
+  locked: boolean
+  recommend: boolean
+}
+
 /** 语言包摘要（设置页语言下拉用）。 */
 interface LocaleMeta {
   /** 语言代码，同时也是文件名（不含 .json） */
@@ -659,6 +672,37 @@ function scanSocial(
   })
 }
 
+// AI 软件缓存流式封装（按应用分批产出，并回报「已扫描条目数」进度）
+function scanAiCache(
+  onItem: (item: AiCacheItem) => void,
+  onProgress?: (scanned: number) => void,
+): Promise<AiCacheItem[]> {
+  return new Promise<AiCacheItem[]>((resolve, reject) => {
+    const channel = 'scan-aicache'
+    const progChannel = 'scan-aicache:progress'
+    const handler = (_e: IpcRendererEvent, payload: any) => {
+      if (payload.type === 'item') {
+        for (const it of payload.items as AiCacheItem[]) onItem(it)
+      } else if (payload.type === 'done') {
+        ipcRenderer.removeListener(channel, handler)
+        ipcRenderer.removeListener(progChannel, progHandler)
+        resolve(payload.result as AiCacheItem[])
+      } else if (payload.type === 'error') {
+        ipcRenderer.removeListener(channel, handler)
+        ipcRenderer.removeListener(progChannel, progHandler)
+        reject(new Error(payload.message))
+      }
+    }
+    const progHandler = (_e: IpcRendererEvent, payload: any) => {
+      if (payload && typeof payload.scanned === 'number')
+        onProgress?.(payload.scanned)
+    }
+    ipcRenderer.on(channel, handler)
+    ipcRenderer.on(progChannel, progHandler)
+    ipcRenderer.send('scan-aicache:start')
+  })
+}
+
 // 安装包清理流式封装
 function scanInstallers(
   minSizeMb: number,
@@ -851,6 +895,7 @@ const api = {
   scanUninstall,
   scanRegistry,
   scanSocial,
+  scanAiCache,
   scanInstallers,
   scanLogs,
   scanResidue,
@@ -979,6 +1024,27 @@ const api = {
   // 社交缓存：取消扫描 / 清理选中项
   cancelScanSocial(): void {
     ipcRenderer.send('scan-social:cancel')
+  },
+  // AI 软件缓存：取消扫描 / 清理选中项
+  cancelScanAiCache(): void {
+    ipcRenderer.send('scan-aicache:cancel')
+  },
+  deleteAiCache(
+    ids: string[],
+    purge: boolean,
+    onProgress?: (ev: { type: 'items'; ids: string[] }) => void,
+  ): Promise<CleanResult> {
+    const channel = 'delete-aicache:progress'
+    const handler = (_e: unknown, payload: unknown) => {
+      const p = payload as { type?: string; ids?: string[] }
+      if (p?.type === 'items') onProgress?.({ type: 'items', ids: p.ids ?? [] })
+    }
+    if (onProgress) ipcRenderer.on(channel, handler)
+    return ipcRenderer
+      .invoke('delete-aicache', { ids, purge })
+      .finally(() => {
+        if (onProgress) ipcRenderer.removeListener(channel, handler)
+      })
   },
   deleteSocial(
     ids: string[],

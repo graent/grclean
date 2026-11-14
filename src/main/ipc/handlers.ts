@@ -56,6 +56,12 @@ import {
   type SocialItem,
 } from '../engine/social'
 import {
+  scanAiCacheStream,
+  deleteAiCacheItems,
+  AI_LEVEL_META,
+  type AiCacheItem,
+} from '../engine/ai_cache'
+import {
   getAllDiskInfo,
   getDiskInfoByLetter,
   getPhysicalDisks,
@@ -984,6 +990,63 @@ export function registerHandlers(win: BrowserWindow): void {
         (paths) => {
           if (paths.length) {
             win.webContents.send('delete-social:progress', {
+              type: 'items',
+              ids: paths,
+            })
+          }
+        },
+      )
+    },
+  )
+
+  // 社交缓存：清理结束
+
+  // AI 软件缓存：流式扫描（按应用分批产出，含两级风险条目）
+  ipcMain.on('scan-aicache:start', async () => {
+    appState.resetCancel()
+    const all: AiCacheItem[] = []
+    try {
+      for await (
+        const batch of scanAiCacheStream(() => appState.cancel, (scanned) =>
+          win.webContents.send('scan-aicache:progress', { scanned }),
+        )
+      ) {
+        win.webContents.send('scan-aicache', { type: 'item', items: batch })
+        all.push(...batch)
+      }
+    } catch (err) {
+      win.webContents.send('scan-aicache', {
+        type: 'error',
+        message: String(err instanceof Error ? err.message : err),
+      })
+      return
+    }
+    appState.setAiCacheSession(all)
+    win.webContents.send('scan-aicache', {
+      type: 'done',
+      result: all,
+      levels: AI_LEVEL_META,
+      cancelled: appState.cancel,
+    })
+  })
+
+  ipcMain.on('scan-aicache:cancel', () => {
+    appState.cancel = true
+  })
+
+  // AI 软件缓存：清理（锁定项后端二次拒绝，默认进回收站）
+  ipcMain.handle(
+    'delete-aicache',
+    async (_e, payload: { ids: string[]; purge?: boolean }): Promise<CleanResult> => {
+      const session = appState.aiCacheSession
+      if (!session) return emptyResult()
+      return deleteAiCacheItems(
+        session.items,
+        payload?.ids ?? [],
+        !!payload?.purge,
+        (paths) => {
+          if (paths.length) {
+            win.webContents.send('delete-aicache:progress', {
               type: 'items',
               ids: paths,
             })

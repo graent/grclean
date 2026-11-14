@@ -15,6 +15,7 @@ import Schedule from './views/Schedule.vue'
 import Settings from './views/Settings.vue'
 import Score from './views/Score.vue'
 import Social from './views/Social.vue'
+import AiClean from './views/AiClean.vue'
 import Disk from './views/Disk.vue'
 import Installers from './views/Installers.vue'
 import Logs from './views/Logs.vue'
@@ -38,6 +39,7 @@ type ViewKey =
   | 'score'
   | 'clean'
   | 'social'
+  | 'aicache'
   | 'disk'
   | 'big'
   | 'startup'
@@ -64,6 +66,7 @@ const views: Record<ViewKey, any> = {
   score: Score,
   clean: Clean,
   social: Social,
+  aicache: AiClean,
   disk: Disk,
   big: BigFiles,
   startup: Startup,
